@@ -1,5 +1,7 @@
-from sklearn.cluster import KMeans
+from sklearn.cluster import KMeans, AgglomerativeClustering
 
-def perform_kmeans(X, k=10):
-    model = KMeans(n_clusters=k, random_state=27)
-    return model.fit_predict(X)
+def kmeans(X, k=6):
+    return KMeans(n_clusters=k, random_state=27).fit_predict(X)
+
+def agglo(X, k=6):
+    return AgglomerativeClustering(n_clusters=k).fit_predict(X)
