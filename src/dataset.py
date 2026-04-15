@@ -1,43 +1,24 @@
 import os
-import torch
-from torch.utils.data import Dataset
-from src.feature_extraction import extract_mfcc
-import librosa
+import numpy as np
+import pandas as pd
 
-class GTZANDataset(Dataset):
-    def __init__(self, root_dir):
-        self.file_paths = [] # all valid files
-        self.labels = [] # genre labels converted to numeric
-        self.label_map = {} # mapping between genre string and int
+class MusicDataset:
+    def __init__(self, csv_path='data/sampled.csv', audio_dir='data/songs'):
+        df = pd.read_csv(csv_path, sep='\t')
 
-        # list all genres and sort
-        genres = sorted(os.listdir(root_dir))
+        # keep only required columns
+        df = df[['track_id', 'lyrics', 'tag', 'language']]
 
-        for i, genre in enumerate(genres):
-            self.label_map[genre] = i
-            genre_path = os.path.join(root_dir, genre)
+        # rename for consistency
+        df = df.rename(columns={'tag': 'genre'})
 
-            for file in os.listdir(genre_path):
-                if file.endswith('.wav'):
-                    path = os.path.join(genre_path, file)
+        # construct audio path
+        df['audio_path'] = df['track_id'].apply(
+            lambda x: os.path.join(audio_dir, f'{x}.mp3')
+        )
 
-                    # validate file by checking if it loads successfully
-                    try:
-                        librosa.load(path, duration=1)
-                        self.file_paths.append(path)
-                        self.labels.append(i)
-                    except:
-                        print(f'Failed to load {path}')
-                        continue
+        # reset index
+        self.df = df.reset_index(drop=True)
 
-    def __len__(self):
-        return len(self.file_paths)
-
-    # returns the mfcc features and label of specific sound file
-    def __getitem__(self, i):
-        path = self.file_paths[i]
-        label = self.labels[i]
-
-        features = extract_mfcc(path)
-
-        return torch.tensor(features, dtype=torch.float32), label
+    def get(self):
+        return self.df
