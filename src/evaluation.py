@@ -43,4 +43,9 @@ def evaluation_medium(Z, true_labels, n_clusters):
     d_agglo = davies_bouldin_score(Z, y_pred_agglo)
     ari_agglo = adjusted_rand_score(y_true, y_pred_agglo)
 
-    return kmeans, y_pred_kmeans, agglo, y_pred_agglo, sil_kmeans, ch_kmeans, d_kmeans, ari_kmeans, sil_agglo, ch_agglo, d_agglo, ari_agglo
+    return (
+        kmeans, y_pred_kmeans,
+        agglo, y_pred_agglo,
+        sil_kmeans, ch_kmeans, d_kmeans, ari_kmeans,
+        sil_agglo, ch_agglo, d_agglo, ari_agglo,
+    )
