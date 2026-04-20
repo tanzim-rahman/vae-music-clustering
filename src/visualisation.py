@@ -44,5 +44,5 @@ def plot_tsne(Z, labels, title, filename, cmap_name='tab10'):
                bbox_to_anchor=(1.05, 1), loc='upper left')
 
     plt.title(title)
-    plt.savefig(f'results_easy/plots/{filename}', bbox_inches='tight')
+    plt.savefig(filename, bbox_inches='tight')
     plt.show()
