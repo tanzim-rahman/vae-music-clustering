@@ -49,7 +49,7 @@ class ConvVAE(nn.Module):
             nn.ReLU()
         )
 
-        # Dynamically computes shape
+        # Dynamically compute shape
         with torch.no_grad():
             dummy = torch.zeros(1, 1, 64, 128)
             h = self.encoder(dummy)
@@ -123,12 +123,13 @@ class MultiModalVAE(nn.Module):
         super().__init__()
 
         # Audio VAE parts
-        self.audio_encoder = ConvVAE(latent_dim).encoder
-        self.audio_fc_mu = ConvVAE(latent_dim).fc_mu
-        self.audio_fc_logvar = ConvVAE(latent_dim).fc_logvar
+        conv = ConvVAE(latent_dim)
+        self.audio_encoder = conv.encoder
+        self.audio_fc_mu = conv.fc_mu
+        self.audio_fc_logvar = conv.fc_logvar
 
-        self.audio_fc_decode = ConvVAE(latent_dim).fc_decode
-        self.audio_decoder = ConvVAE(latent_dim).decoder
+        self.audio_fc_decode = conv.fc_decode
+        self.audio_decoder = conv.decoder
 
         # Text parts
         self.text_encoder = TextEncoder(text_dim, latent_dim)
@@ -164,16 +165,63 @@ class MultiModalVAE(nn.Module):
 
         return audio_recon, text_recon, mu, logvar
 
+class MultiModalAE(nn.Module):
+    def __init__(self, text_dim, latent_dim=32):
+        super().__init__()
+
+        # Audio parts
+        conv = ConvVAE(latent_dim)
+        self.audio_encoder = conv.encoder
+        self.audio_fc = nn.Linear(conv.flatten_dim, latent_dim)
+
+        self.audio_fc_decode = conv.fc_decode
+        self.audio_decoder = conv.decoder
+
+        # Text parts
+        self.text_encoder_base = TextEncoder(text_dim, latent_dim)
+        self.text_fc = nn.Linear(latent_dim, latent_dim)
+        self.text_decoder = TextDecoder(latent_dim, text_dim)
+
+    def encode_audio(self, x):
+        h = self.audio_encoder(x)
+        h = h.view(h.size(0), -1)
+        return self.audio_fc(h)
+
+    def encode_text(self, x):
+        mu, _ = self.text_encoder_base(x) 
+        return self.text_fc(mu)
+
+    def forward(self, audio, text):
+        # Encode
+        z_a = self.encode_audio(audio)
+        z_t = self.encode_text(text)
+
+        # Simply take mean
+        z = (z_a + z_t) / 2
+
+        # Decode
+        audio_recon = self.audio_decoder(
+            self.audio_fc_decode(z).view(-1, 64, 8, 16)
+        )
+        text_recon = self.text_decoder(z)
+
+        return audio_recon, text_recon, z
+
 def vae_loss(recon, x, mu, logvar):
     recon_loss = F.mse_loss(recon, x, reduction='mean')
     kl = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
     return recon_loss + kl
 
-def multimodal_vae_loss(audio_recon, audio, text_recon, text, mu, logvar):
+def multimodal_vae_loss(audio_recon, audio, text_recon, text, mu, logvar, beta=1):
     recon_audio = F.mse_loss(audio_recon, audio, reduction='mean')
     recon_text = F.mse_loss(text_recon, text, reduction='mean')
 
     kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1)
     kl = torch.mean(kl)
 
-    return recon_audio + recon_text + kl
+    return recon_audio + recon_text + beta * kl
+
+def multimodal_ae_loss(audio_recon, audio, text_recon, text):
+    recon_audio = F.mse_loss(audio_recon, audio, reduction='mean')
+    recon_text = F.mse_loss(text_recon, text, reduction='mean')
+    return recon_audio + recon_text
