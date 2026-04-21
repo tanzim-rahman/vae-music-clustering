@@ -1,120 +1,137 @@
-# Unsupervised Music Genre Clustering using Variational Autoencoders
+# Multimodal Music Clustering using VAE
 
-## Overview
+This repository contains the implementation and evaluation of **unsupervised representation learning for music clustering** using deep learning models, developed as part of a Neural Networks course term project.
 
-This project implements an **unsupervised learning pipeline** using a **Variational Autoencoder (VAE)** to learn latent representations of music tracks and perform clustering. The goal is to group songs based on learned features from audio.
+The project progresses across three levels of complexity:
 
----
+- **Easy:** Audio-only Variational Autoencoder (VAE)
+- **Medium:** Multimodal VAE (Audio + Lyrics)
+- **Hard:** Multimodal Beta-VAE
 
-## Installation
+## Repository Structure
 
-```bash
-git clone https://www.github.com/tanzim-rahman/vae-music-clustering
+```{txt}
+data/
+    songs/               # 30-second audio previews (.mp3)
+    sampled.tsv          # Metadata (track_id, lyrics, genre, language etc.)
 
-cd vae-music-clustering
+results_easy/
+    plots/               # Loss curves, t-SNE plots
+    ...                  # Trained VAE + evaluation metrics
 
-pip install -r requirements.txt
+results_medium/
+    plots/               # Loss curves, t-SNE plots
+    ...                  # Trained multimodal VAE + metrics
+
+results_hard/
+    plots/               # Loss curves, t-SNE, cluster distributions, reconstructions
+    ...                  # Trained AE & Beta-VAE models + metrics
+
+src/
+    audio.py             # Audio feature extraction
+    evaluation.py        # Clustering metrics
+    models.py            # VAE, multimodal VAE, AE, Beta-VAE architectures
+    visualisation.py     # Plotting utilities
+
+easy.ipynb               # Easy task workflow
+medium.ipynb             # Medium task workflow
+hard.ipynb               # Hard task workflow
+
+requirements.txt         # Dependencies
+README.md                # You are here
 ```
-
----
-
-## Usage
-
-1. Download the **GTZAN** dataset available [here](https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification).
-
-2. Copy the *genres_original* directory from the dataset into the *data* directory of the project.
-
-3. Open **train.ipynb** using Jupyter Notebook and run the cells.
-
----
 
 ## Dataset
 
-We use the **GTZAN Dataset Music Genre Classification** dataset, which contains:
+The dataset was constructed by merging two sources:
 
-- 1000 audio tracks
-- 10 music genres (blues, classical, country etc.)
-- 30-second WAV files
+- [Genius Song Lyrics](https://www.kaggle.com/datasets/carlosgdcj/genius-song-lyrics-with-language-information)
+- [Million Song Dataset + Spotify + Last.fm](https://www.kaggle.com/datasets/undefinenull/million-song-dataset-spotify-lastfm)
 
----
+The former was used for the song metadata (lyrics/genre/language). The latter was used for the 30-second Spotify preview url.
 
-## Preprocessing Steps
+Steps:
 
-1. **Audio Validation**
+1. Matched songs by **title + artist**
+2. Filtered to:
+    - **500 English songs**
+    - **500 German songs**
+3. Downloaded audio previews
 
-   - Corrupted files are removed during dataset loading
+Important columns in the dataset:
 
-2. **Audio Cleaning**
+- `track_id`
+- `lyrics`
+- `tag` (**Genre**: pop, rock, rap, country, rb, misc)
+- `language` (en, de)
 
-   - Silence trimming
-   - Fixed duration (30 seconds)
-   - Amplitude normalisation
+## Methodology
 
-3. **Feature Extraction**
+### Easy Task
 
-   - MFCC (Mel-Frequency Cepstral Coefficients)
+- **Model:** Convolutional VAE (audio only)
+- **Features:** MFCC
+- **Baselines:** RAW, PCA
+- **Clustering:** KMeans
 
-4. **Feature Normalisation**
+### Medium Task
 
-   - StandardScaler applied across dataset
+- **Model:** Multimodal Conv-VAE (audio + lyrics)
+- **Text Features:** TF-IDF
+- **Fusion:** Shared latent space
+- **Baselines:** TEXT, RAW, PCA
+- **Clustering:** KMeans, Agglomerative
 
----
+### Hard Task
 
-## Model Architecture
-
-### Variational Autoencoder (VAE)
-
-- Encoder: Fully connected layers (Input -> 256 -> 128)
-- Latent space: 16-dimensional
-- Decoder: Mirror image of encoder (128 -> 256 -> Output)
-- Loss:
-
-  - Reconstruction Loss (MSE)
-  - KL Divergence
-
----
-
-## Clustering Method
-
-- K-Means
-
----
+- **Model:** Multimodal Beta-VAE (Beta = 2, 4)
+- **Baselines:**: TEXT, RAW, PCA, AE
+- **Clustering:**: KMeans, Agglomerative
 
 ## Evaluation Metrics
+
+### Easy
+
+- Silhouette Score
+- Calinski-Harabasz Index
+- Adjusted Rand Index (ARI)
+
+### Medium
 
 - Silhouette Score
 - Calinski-Harabasz Index
 - Davies-Bouldin Index
-- Adjusted Rand Index (ARI)
-- Normalised Mutual Information (NMI)
+- ARI
+
+### Hard
+
+- Silhouette Score
+- Calinski-Harabasz Index
+- Davies-Bouldin Index
+- ARI
+- Normalized Mutual Information (NMI)
 - Cluster Purity
 
----
+## Visualizations
 
-## Visualisations
+Each `results_{task}/plots/` directory contains:
 
-- Training loss curves
-- T-SNE plots of latent space
+- **Loss Curves:** Training loss for all models
+- **Latent Space (t-SNE):** Colored by Genre/Language
+- **Cluster Distributions (Hard Task only):** Stacked bar plots (proportions) and heatmaps (cluster vs. label)
 
----
+## How to Run
 
-## Outputs
+1. Clone repository.
 
-The following are saved in results/bvae_{BETA}:
+    git clone <https://github.com/tanzim-rahman/vae-music-clustering>
 
-- Training loss history (`.csv`)
-- Training loss curve (`.svg`)
-- Latent vectors (`.npy`)
-- Cluster labels (`.npy`)
-- True labels (`.npy`)
-- Evaluation metrics (`.csv`)
-- t-SNE visualisations (`.svg`)
-- Model weights (`.pth`)
+    cd vae-music-clustering
 
-Additionally, the PCA results are saved in results/pca:
+2. Install dependencies.
 
-- PCA features (`.npy`)
-- Cluster labels (`.npy`)
-- True labels (`.npy`)
-- Evaluation metrics (`.csv`)
-- t-SNE visualisations (`.svg`)
+    pip install -r requirements.txt
+
+3. Run each notebook.
+
+Please note that the *songs* directory is relatively large (approximately 360 MB), which may impact cloning time.
